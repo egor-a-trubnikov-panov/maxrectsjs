@@ -13,7 +13,7 @@ var bin = new MaxRects.MaxRects( 256, 256 );
 //bin.insert( [[30,20],[50,20],[10,80],[90,20]] );
 //bin.batchInsert( new Array(64).fill().map(()=>Math.random()*32|0), new Array(64).fill().map(()=>Math.random()*32|0))
 //bin.batchInsert([32,32],[32,32])
-bin.insert( new Array( 64 ).fill().map( () => [32,32] ))
+bin.insert( new Array( 64 ).fill().map( () => [16+Math.random()*32|0,16+Math.random()*32|0] ))
 var ctx = document.querySelector("canvas").getContext("2d");
 for ( var i = 0; i < bin.usedRectangles.length; i++ ) {
 	var rect = bin.usedRectangles[i]

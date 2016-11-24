@@ -1,7 +1,7 @@
 import {Rectangle} from './Rectangle'
 
 export class MaxRects {
-	constructor( width, height, allowRotation ) {
+	constructor( width, height, allowRotation = false ) {
 		this.binWidth = width
 		this.binHeight = height
 		this.freeRectangles = [new Rectangle(0, 0, width, height)]
@@ -13,28 +13,22 @@ export class MaxRects {
 		return this.usedRectangles.reduce( (acc,{width,height}) => acc + width*height, 0 ) / (this.binWidth*this.binHeight);
 	}
 	
-	insert( whs, fitMethod ) {
+	insert( idwhs, fitMethod ) {
 		const method = fitMethod || MaxRects.BestAreaFit
-		const rects = whs.slice()
+		const rects = idwhs.slice()
 		while ( rects.length > 0 ) {
-			let bestScore1 = Infinity
-			let bestScore2 = Infinity
-			let bestRect = null
-			let bestRectIndex = -1
+			let [bestScore1,bestScore2,bestRect,bestIndex] = [Infinity,Infinity,null,-1]
 
-			rects.forEach( ([width,height], i) => {
-				const {score1,score2,node} = method( this, width, height )
+			rects.forEach( ([width, height, id], i) => {
+				const {score1,score2,node} = method( this, width, height, id )
 				if ( score1 < bestScore1 || (score1 == bestScore1 && score2 < bestScore2 )) {
-					bestScore1 = score1
-					bestScore2 = score2
-					bestRect = node
-					bestRectIndex = i
+					[bestScore1, bestScore2, bestRect, bestIndex] = [score1, score2, node, i]
 				}
 			})
 
 			if ( bestRect != null ) {
 				this.placeRect( bestRect )
-				rects.splice( bestRectIndex, 1 )
+				rects.splice( bestIndex, 1 )
 			} else {
 				return false 
 			}
@@ -53,9 +47,10 @@ export class MaxRects {
 		this.usedRectangles.push( node )
 	}
 
-	static BestAreaFit( self, width, height ) {
-		const bestRect = new Rectangle( 0, 0, 0, 0 )
+	static BestAreaFit( self, width, height, id ) {
+		const bestRect = new Rectangle( 0, 0, 0, 0, false )
 
+		let [bestX,bestY,bestWidth,bestHeight,bestRotated] = [0,0,0,0,false]
 		let bestAreaFit = Infinity
 		let bestShortSideFit = Infinity
 
@@ -69,10 +64,7 @@ export class MaxRects {
 				const shortSideFit = Math.min( leftoverHoriz, leftoverVert )
 
 				if ( areaFit < bestAreaFit || ( areaFit == bestAreaFit && shortSideFit < bestShortSideFit )) {
-					bestRect.x = freeRect.x
-					bestRect.y = freeRect.y
-					bestRect.width = width
-					bestRect.height = height
+					[bestX,bestY,bestWidth,bestHeight,bestRotated] = [freeRect.x,freeRect.y,width,height,false]
 					bestShortSideFit = shortSideFit
 					bestAreaFit = areaFit
 				}
@@ -84,50 +76,43 @@ export class MaxRects {
 				const shortSideFit = Math.min( leftoverHoriz, leftoverVert )
 
 				if ( areaFit < bestAreaFit || ( areaFit == bestAreaFit && shortSideFit < bestShortSideFit )) {
-					bestRect.x = freeRect.x
-					bestRect.y = freeRect.y
-					bestRect.width = height
-					bestRect.height = width
+					[bestX,bestY,bestWidth,bestHeight,bestRotated] = [freeRect.x,freeRect.y,height,width,true]
 					bestShortSideFit = shortSideFit
 					bestAreaFit = areaFit
 				}
 			}
 		})
 
-		return { score1: bestAreaFit, score2: bestShortSideFit, node: bestRect }
+		return {
+			score1: bestAreaFit,
+			score2: bestShortSideFit,
+			node: new Rectangle( bestX, bestY, bestWidth, bestHeight, bestRotated, id )
+		}
 	}
 	
 	splitFreeRect( freeRect, usedRect ) {
 		if ( usedRect.intersects( freeRect )) {
-			const fleft = freeRect.x
-			const fright = freeRect.x + freeRect.width
-			const fbottom = freeRect.y
-			const ftop = freeRect.y + freeRect.height 
-			const uleft = usedRect.x
-			const uright = usedRect.x + usedRect.width
-			const ubottom = usedRect.y
-			const utop = usedRect.y + usedRect.height 
 			const rects = this.freeRectangles
-			if ( uleft < fright && uright > fleft ) {
+			if ( usedRect.left < freeRect.right && usedRect.right > freeRect.left ) {
 				// New node at the top side of the used node.
-				if ( ubottom > fbottom && ubottom < ftop ) {
-					rects.push( new Rectangle( fleft, fbottom, freeRect.width, ubottom - fbottom ))
+				if ( usedRect.bottom > freeRect.bottom && usedRect.bottom < freeRect.top ) {
+					rects.push( new Rectangle( freeRect.left, freeRect.bottom, freeRect.width, usedRect.bottom - freeRect.bottom ))
 				}
 				// New node at the bottom side of the used node.
-				if ( utop < ftop ) {
-					rects.push( new Rectangle( fleft, utop, freeRect.width, ftop - utop ))
+				if ( usedRect.top < freeRect.top ) {
+					rects.push( new Rectangle( freeRect.left, usedRect.top, freeRect.width, freeRect.top - usedRect.top ))
 				}
 			}
 
-			if ( ubottom < ftop && utop > fbottom ) {
+			if ( usedRect.bottom < freeRect.top && usedRect.top > freeRect.bottom ) {
 				// New node at the left side of the used node.
-				if ( uleft > fleft && uleft < fright ) {
-					rects.push( new Rectangle( fleft, fbottom, uleft - fleft, freeRect.height ))
+				if ( usedRect.left > freeRect.left && usedRect.left < freeRect.right ) {
+					rects.push( new Rectangle( freeRect.left, freeRect.bottom, usedRect.left - freeRect.left, freeRect.height ))
 
 				}
 				// New node at the right side of the used node.
-				if ( uright < fright ) {
-					rects.push( new Rectangle( uright, fbottom, fright - uright, freeRect.height ))
+				if ( usedRect.right < freeRect.right ) {
+					rects.push( new Rectangle( usedRect.right, freeRect.bottom, freeRect.right - usedRect.right, freeRect.height ))
 				}
 			}
 			return true
