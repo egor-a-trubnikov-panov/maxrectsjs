@@ -1,0 +1,18 @@
+{
+  "name": "binpack-maxrects",
+  "version": "0.1.0",
+  "main": "index.js",
+  "scripts": {
+    "init": "mkdir dist",
+    "clean": "rm -rf dist",
+    "prebuild": "npm run clean && npm run init",
+    "build": "babel src -d dist --presets es2015",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "iskolbin",
+  "license": "MIT",
+  "devDependencies": {
+    "babel-cli": "^6.18.0",
+    "babel-preset-es2015": "^6.18.0"
+  }
+}
